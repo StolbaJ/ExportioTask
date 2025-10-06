@@ -122,35 +122,28 @@ def main():
     token = "6006390-6000727-7Y05TI6LMN7VFEYOEWGSVINHOE8ZUPBHV9YA6N6STVVSGM02F248NZX4D1KZXLNR"
     client = BaselinkerClient(token)
 
-    try:
-        print("Fetching available inventories...")
-        inventories = client.get_inventories()
-        if not inventories:
-            print("No inventories found in your Baselinker account.")
-            return
-        for n in inventories:
-            print(f"Inventory ID: {n['inventory_id']}")
-        # Use the first available inventory
-        inventory_id = inventories[0]['inventory_id']
-        print(f"Using inventory_id: {inventory_id}")
 
-        print("Testing connection to Baselinker API...")
-        products = client.get_products(inventory_id)
-        print(f"Number of products in inventory {inventory_id}: {len(products)}")
+    print("Fetching available inventories...")
+    inventories = client.get_inventories()
+    if not inventories:
+        print("No inventories found in your Baselinker account.")
+        return
+    for n in inventories:
+        print(f"Inventory ID: {n['inventory_id']}")
+    # Use the first available inventory
+    inventory_id = inventories[0]['inventory_id']
+    print(f"Using inventory_id: {inventory_id}")
 
-        if products:
-            print("First product:")
-            first_product = products[0]
-            print(f"ID: {first_product.get('product_id')}")
-            print(f"SKU: {first_product.get('sku')}")
-            print(f"EAN: {first_product.get('ean')}")
-            print(f"Name: {first_product.get('name')}")
-            print(f"Price: {first_product.get('price')}")
-            print(f"Field1: {first_product.get('extra_field_1')}")
-            print(f"Field2: {first_product.get('extra_field_2')}")
+    print("Testing connection to Baselinker API...")
+    products = client.get_products(inventory_id)
+    print(f"Number of products in inventory {inventory_id}: {len(products)}")
 
-    except Exception as e:
-        print(f"API test error: {str(e)}")
+    if products:
+        print("First product:")
+        #first_product = products[0]
+        print(f"ID: {products}")
+
+
 
 if __name__ == "__main__":
     main()
