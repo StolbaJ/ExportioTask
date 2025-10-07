@@ -67,6 +67,17 @@ def main():
             print("No products found in the inventory.")
             return
 
+        # Get available extra fields for this inventory
+        try:
+            extra_fields = client.get_inventory_extra_fields(inventory_id)
+            field1_id = extra_fields[0]['extra_field_id'] if len(extra_fields) >= 1 else None
+            field2_id = extra_fields[1]['extra_field_id'] if len(extra_fields) >= 2 else None
+            logger.info(f"Extra fields: Field1 ID={field1_id}, Field2 ID={field2_id}")
+        except Exception as e:
+            logger.warning(f"Could not fetch extra fields: {str(e)}")
+            field1_id = None
+            field2_id = None
+
         # Get detailed product data for extra fields
         print("Fetching detailed product data for extra fields...")
         product_ids = [product.get('id') for product in products if product.get('id')]
@@ -112,12 +123,11 @@ def main():
                 detail_product = detailed_products[product_id_str]
                 text_fields = detail_product.get('text_fields', {})
                 if text_fields:
-                    # Get all extra_field_* keys from text_fields
-                    extra_fields = {k: v for k, v in text_fields.items() if k.startswith('extra_field_')}
-                    if len(extra_fields) >= 1:
-                        field1 = list(extra_fields.values())[0]
-                    if len(extra_fields) >= 2:
-                        field2 = list(extra_fields.values())[1]
+                    # Get specific extra fields by dynamically retrieved IDs
+                    if field1_id:
+                        field1 = text_fields.get(f'extra_field_{field1_id}', 'N/A')
+                    if field2_id:
+                        field2 = text_fields.get(f'extra_field_{field2_id}', 'N/A')
             
             print(f"{product_id:<12} {sku:<15} {ean:<15} {name[:19]:<20} {price:<10} {field1:<15} {field2:<15}")
 
@@ -155,10 +165,9 @@ def main():
                 if product_id_str in detailed_products:
                     detail_product = detailed_products[product_id_str]
                     text_fields = detail_product.get('text_fields', {})
-                    if text_fields:
-                        extra_fields = {k: v for k, v in text_fields.items() if k.startswith('extra_field_')}
-                        if len(extra_fields) >= 2:
-                            current_field2 = list(extra_fields.values())[1]
+                    if text_fields and field2_id:
+                        # Get specific Field2 by dynamically retrieved ID
+                        current_field2 = text_fields.get(f'extra_field_{field2_id}', 'N/A')
                 print(f"  Current Field2: {current_field2}")
                 
                 new_value = input("Enter new value for Field2: ").strip()

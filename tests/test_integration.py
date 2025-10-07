@@ -5,7 +5,17 @@ These tests can be run against actual API with proper token
 
 import pytest
 import os
+from pathlib import Path
 from baselinker_cli import BaselinkerClient
+
+# Load .env file if it exists
+try:
+    from dotenv import load_dotenv
+    env_path = Path(__file__).parent.parent / '.env'
+    if env_path.exists():
+        load_dotenv(env_path)
+except ImportError:
+    pass
 
 
 @pytest.mark.integration
