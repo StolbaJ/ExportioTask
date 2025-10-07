@@ -84,7 +84,13 @@ class BaselinkerClient:
         result = self._make_request('getInventoryProductsList', parameters)
 
         if 'products' in result:
-            return result['products']
+            # Baselinker API vrací produkty jako slovník s ID jako klíče
+            # Musíme to převést na seznam
+            products_dict = result['products']
+            if isinstance(products_dict, dict):
+                return list(products_dict.values())
+            else:
+                return products_dict
         else:
             return []
 
@@ -100,50 +106,139 @@ class BaselinkerClient:
         Returns:
             bool: True pokud byla aktualizace úspěšná
         """
+        # Nejdříve získáme dostupné extra fields
+        try:
+            extra_fields = self.get_inventory_extra_fields(inventory_id)
+            print(f"Available extra fields: {extra_fields}")
+            
+            # Najdeme druhé extra field (index 1)
+            if len(extra_fields) < 2:
+                print("Inventář nemá dostatek extra fields (potřebujeme alespoň 2).")
+                return False
+            
+            field_id = extra_fields[1]['extra_field_id']  # Druhé pole (index 1)
+            field_name = extra_fields[1]['name']
+            print(f"Using extra field: {field_name} (ID: {field_id})")
+            
+        except Exception as e:
+            print(f"Chyba při získávání extra fields: {str(e)}")
+            return False
+
+        # Nejdříve získáme aktuální data produktu
+        try:
+            current_product = self.get_product_details(product_id, inventory_id)
+            if not current_product:
+                print(f"Produkt s ID {product_id} nebyl nalezen v detailních datech.")
+                print("Zkusíme získat základní data produktu...")
+                
+                # Zkusíme získat základní data z getInventoryProductsList
+                all_products = self.get_products(inventory_id)
+                current_product = None
+                for product in all_products:
+                    if product.get('id') == product_id:
+                        current_product = product
+                        break
+                
+                if not current_product:
+                    print(f"Produkt s ID {product_id} nebyl nalezen ani v základních datech.")
+                    return False
+                
+                print(f"Using basic product data: {current_product}")
+            else:
+                print(f"Current product data: {current_product}")
+        except Exception as e:
+            print(f"Chyba při získávání dat produktu: {str(e)}")
+            return False
+
+        # Získáme název produktu z text_fields nebo hlavní struktury
+        product_name = current_product.get('name', '')
+        text_fields = current_product.get('text_fields', {})
+        if text_fields and 'name' in text_fields:
+            product_name = text_fields['name']
+        
+        # Připravíme parametry pro aktualizaci
         parameters = {
-            'inventory_id': inventory_id,
-            'products': [
-                {
-                    'product_id': product_id,
-                    'extra_field_2': new_value
-                }
-            ]
+            'inventory_id': str(inventory_id),
+            'product_id': str(product_id),
+            'sku': current_product.get('sku', ''),
+            'ean': current_product.get('ean', ''),
+            'text_fields': {
+                'name': product_name,
+                f'extra_field_{field_id}': new_value
+            }
         }
+        
+        print(f"Updating with parameters: {parameters}")
 
         try:
-            result = self._make_request('updateInventoryProducts', parameters)
+            result = self._make_request('addInventoryProduct', parameters)
             return result.get('status') == 'SUCCESS'
         except Exception as e:
             print(f"Chyba při aktualizaci produktu: {str(e)}")
             return False
 
+    def get_inventory_extra_fields(self, inventory_id: int) -> List[Dict]:
+        """
+        Získá seznam dostupných extra fields pro inventář
 
-def main():
-    token = "6006390-6000727-7Y05TI6LMN7VFEYOEWGSVINHOE8ZUPBHV9YA6N6STVVSGM02F248NZX4D1KZXLNR"
-    client = BaselinkerClient(token)
+        Args:
+            inventory_id (int): ID inventáře
+
+        Returns:
+            List[Dict]: Seznam extra fields
+        """
+        parameters = {
+            'inventory_id': inventory_id
+        }
+
+        result = self._make_request('getInventoryExtraFields', parameters)
+        return result.get('extra_fields', [])
+
+    def get_products_detailed(self, product_ids: List[int], inventory_id: int) -> Dict:
+        """
+        Získá detailní informace o více produktech najednou
+
+        Args:
+            product_ids (List[int]): Seznam ID produktů
+            inventory_id (int): ID inventáře
+
+        Returns:
+            Dict: Slovník s ID jako klíče a detailní data jako hodnoty
+        """
+        parameters = {
+            'inventory_id': inventory_id,
+            'products': product_ids
+        }
+
+        result = self._make_request('getInventoryProductsData', parameters)
+        print(f"getInventoryProductsData response: {result}")
+        
+        if 'products' in result and result['products']:
+            products = result['products']
+            if isinstance(products, dict):
+                print(f"Products returned as dict with {len(products)} items")
+                return products
+            else:
+                # Pokud je to seznam, převedeme na slovník
+                print(f"Products returned as list with {len(products)} items")
+                return {product.get('id'): product for product in products}
+        else:
+            print("No products found in detailed data")
+            return {}
+
+    def get_product_details(self, product_id: int, inventory_id: int) -> Dict:
+        """
+        Získá detailní informace o konkrétním produktu
+
+        Args:
+            product_id (int): ID produktu
+            inventory_id (int): ID inventáře
+
+        Returns:
+            Dict: Detailní data produktu
+        """
+        detailed_products = self.get_products_detailed([product_id], inventory_id)
+        # Convert product_id to string since detailed_products uses string keys
+        return detailed_products.get(str(product_id), {})
 
 
-    print("Fetching available inventories...")
-    inventories = client.get_inventories()
-    if not inventories:
-        print("No inventories found in your Baselinker account.")
-        return
-    for n in inventories:
-        print(f"Inventory ID: {n['inventory_id']}")
-    # Use the first available inventory
-    inventory_id = inventories[0]['inventory_id']
-    print(f"Using inventory_id: {inventory_id}")
-
-    print("Testing connection to Baselinker API...")
-    products = client.get_products(inventory_id)
-    print(f"Number of products in inventory {inventory_id}: {len(products)}")
-
-    if products:
-        print("First product:")
-        #first_product = products[0]
-        print(f"ID: {products}")
-
-
-
-if __name__ == "__main__":
-    main()
