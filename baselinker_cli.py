@@ -113,7 +113,6 @@ class BaselinkerClient:
         # First, get available extra fields
         try:
             extra_fields = self.get_inventory_extra_fields(inventory_id)
-            logger.debug(f"Available extra fields: {extra_fields}")
             
             # Find the second extra field (index 1)
             if len(extra_fields) < 2:
@@ -147,9 +146,9 @@ class BaselinkerClient:
                     logger.error(f"Product with ID {product_id} not found in basic data either.")
                     return False
                 
-                logger.debug(f"Using basic product data: {current_product}")
+                logger.debug(f"Using basic product data")
             else:
-                logger.debug(f"Current product data: {current_product}")
+                logger.debug(f"Using detailed product data")
         except Exception as e:
             logger.error(f"Error getting product data: {str(e)}")
             return False
@@ -172,7 +171,7 @@ class BaselinkerClient:
             }
         }
         
-        logger.debug(f"Updating with parameters: {parameters}")
+        logger.debug(f"Updating product {product_id} with new field2 value")
 
         try:
             result = self._make_request('addInventoryProduct', parameters)
@@ -215,19 +214,15 @@ class BaselinkerClient:
         }
 
         result = self._make_request('getInventoryProductsData', parameters)
-        logger.debug(f"getInventoryProductsData response: {result}")
         
         if 'products' in result and result['products']:
             products = result['products']
             if isinstance(products, dict):
-                logger.debug(f"Products returned as dict with {len(products)} items")
                 return products
             else:
                 # If it's a list, convert to dict
-                logger.debug(f"Products returned as list with {len(products)} items")
                 return {product.get('id'): product for product in products}
         else:
-            logger.warning("No products found in detailed data")
             return {}
 
     def get_product_details(self, product_id: int, inventory_id: int) -> Dict:

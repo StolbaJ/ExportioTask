@@ -1,6 +1,6 @@
 # Baselinker Product Management
 
-CLI tool for managing product supplementary fields in Baselinker inventory via API.
+Tool for managing product supplementary fields in Baselinker inventory via API.
 
 ## Setup
 ```bash
@@ -9,6 +9,14 @@ echo "BASELINKER_API_TOKEN=your_token" > .env
 ```
 
 ## Usage
+
+### Web Interface (for non-technical users)
+```bash
+streamlit run web_app.py
+```
+Opens browser at `http://localhost:8501` with editable product table.
+
+### CLI (for technical users)
 ```bash
 python main.py
 ```
