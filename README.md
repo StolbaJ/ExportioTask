@@ -12,7 +12,7 @@ echo "BASELINKER_API_TOKEN=your_token" > .env
 
 ### Web Interface (for non-technical users)
 ```bash
-streamlit run web_app.py
+streamlit run web_app.py --server.headless true
 ```
 Opens browser at `http://localhost:8501` with editable product table.
 
