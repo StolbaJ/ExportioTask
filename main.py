@@ -1,13 +1,45 @@
 """
-Hlavní spouštěcí soubor pro Baselinker Product Management aplikaci
+Main entry point for Baselinker Product Management application
 """
 
+import os
+import sys
+import logging
+from pathlib import Path
 from baselinker_cli import BaselinkerClient
+
+# Try to load .env file if it exists
+try:
+    from dotenv import load_dotenv
+    env_path = Path(__file__).parent / '.env'
+    if env_path.exists():
+        load_dotenv(env_path)
+        logger = logging.getLogger(__name__)
+        logger.info(f"Loaded environment variables from {env_path}")
+except ImportError:
+    # python-dotenv not installed, will use system environment variables
+    pass
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger(__name__)
 
 
 def main():
-    """Hlavní funkce aplikace"""
-    token = "6006390-6000727-7Y05TI6LMN7VFEYOEWGSVINHOE8ZUPBHV9YA6N6STVVSGM02F248NZX4D1KZXLNR"
+    """Main application function"""
+    # Get token from environment variable
+    token = os.getenv('BASELINKER_API_TOKEN')
+    
+    if not token:
+        logger.error("BASELINKER_API_TOKEN environment variable is not set!")
+        sys.exit(1)
+    
     client = BaselinkerClient(token)
 
     print("=== Baselinker Product Management ===")
@@ -45,10 +77,10 @@ def main():
                 # Get detailed data for all products at once
                 detailed_data = client.get_products_detailed(product_ids, inventory_id)
                 detailed_products = detailed_data
-                print(f"Retrieved detailed data for {len(detailed_products)} products")
+                logger.info(f"Retrieved detailed data for {len(detailed_products)} products")
             except Exception as e:
-                print(f"Warning: Could not fetch detailed product data: {str(e)}")
-                print("Showing basic product data only...")
+                logger.warning(f"Could not fetch detailed product data: {str(e)}")
+                logger.info("Showing basic product data only...")
 
         # Display all products with required fields
         print("\n=== All Products ===")
@@ -71,9 +103,11 @@ def main():
             # Try to get extra fields from detailed data
             field1 = 'N/A'
             field2 = 'N/A'
-            
+
             # Convert product_id to string since detailed_products uses string keys
+
             product_id_str = str(product_id)
+
             if product_id_str in detailed_products:
                 detail_product = detailed_products[product_id_str]
                 text_fields = detail_product.get('text_fields', {})
@@ -117,6 +151,7 @@ def main():
                 # Try to get current field2 value from detailed data
                 current_field2 = 'N/A'
                 product_id_str = str(product_id)
+
                 if product_id_str in detailed_products:
                     detail_product = detailed_products[product_id_str]
                     text_fields = detail_product.get('text_fields', {})
@@ -161,8 +196,9 @@ def main():
                 print(f"An error occurred: {str(e)}")
 
     except Exception as e:
-        print(f"Error connecting to Baselinker API: {str(e)}")
-        print("Please check your internet connection and API token.")
+        logger.error(f"Error connecting to Baselinker API: {str(e)}")
+        logger.error("Please check your internet connection and API token.")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
